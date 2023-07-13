@@ -2,6 +2,7 @@ import http, { IncomingMessage, ServerResponse } from 'node:http';
 import { StringDecoder } from 'node:string_decoder';
 import { Connection } from 'mysql2/promise';
 import { file } from './file.js';
+import { cookieParser, isUserLoggedIn } from './utils.js';
 
 // PAGES
 import { PageHome } from '../pages/PageHome.js';
@@ -14,7 +15,6 @@ import { PageAccount } from '../pages/PageAccount.js';
 // API
 import { registerAPI } from '../api/register.js';
 import { loginAPI } from '../api/login.js';
-import { cookieParser, isUserLoggedIn } from './utils.js';
 import { servicesAPI } from '../api/services.js';
 
 let dbConnection = {} as Connection;
@@ -92,8 +92,8 @@ const serverLogic = async (req: IncomingMessage, res: ServerResponse) => {
 
         let jsonData = {};
         try {
-                jsonData = JSON.parse(buffer);
-            } catch (error) { }
+            jsonData = JSON.parse(buffer);
+        } catch (error) { }
 
         const dataForHandlers: DataForHandlers = {
             dbConnection,
@@ -104,8 +104,8 @@ const serverLogic = async (req: IncomingMessage, res: ServerResponse) => {
             user: {
                 email: '',
                 isLoggedIn: false,
-            }
-        }
+            },
+        };
 
         if (isTextFile) {
             const [err, msg] = await file.readPublic(trimmedPath);
@@ -144,7 +144,7 @@ const serverLogic = async (req: IncomingMessage, res: ServerResponse) => {
             const [_, endpoint, ...restUrlParts] = trimmedPath.split('/') as [string, string, string[]];
             const apiFunction = apiEndpoints[endpoint];
             if (apiFunction) {
-                apiRes = await apiFunction(httpMethod, restUrlParts, jsonData) as APIresponse;
+                apiRes = await apiFunction(dataForHandlers) as APIresponse;
             } else {
                 apiRes = {
                     statusCode: 200,
@@ -197,9 +197,9 @@ export const protectedPages: Record<string, any> = {
 };
 
 export const apiEndpoints: Record<string, any> = {
-    'register': registerAPI,
-    'login': loginAPI,
-    'services': servicesAPI,
+    register: registerAPI,
+    login: loginAPI,
+    services: servicesAPI,
 };
 
 const httpServer = http.createServer(serverLogic);
